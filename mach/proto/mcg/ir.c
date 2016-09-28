@@ -2,27 +2,28 @@
 
 static int next_id = 0;
 
-struct ir* new_ir0(int opcode, int size)
+struct ir* new_ir0(int opcode, int size, enum ir_type type)
 {
 	struct ir* ir = calloc(sizeof(struct ir), 1);
 	ir->id = next_id++;
 	ir->opcode = opcode;
 	ir->size = size;
+    ir->type = type;
 	return ir;
 }
 
-struct ir* new_ir1(int opcode, int size,
+struct ir* new_ir1(int opcode, int size, enum ir_type type,
 	struct ir* left)
 {
-	struct ir* ir = new_ir0(opcode, size);
+	struct ir* ir = new_ir0(opcode, size, type);
 	ir->left = left;
 	return ir;
 }
 
-struct ir* new_ir2(int opcode, int size,
+struct ir* new_ir2(int opcode, int size, enum ir_type type,
 	struct ir* left, struct ir* right)
 {
-	struct ir* ir = new_ir0(opcode, size);
+	struct ir* ir = new_ir0(opcode, size, type);
 	ir->left = left;
 	ir->right = right;
 	return ir;
@@ -30,38 +31,38 @@ struct ir* new_ir2(int opcode, int size,
 
 struct ir* new_labelir(const char* label)
 {
-	struct ir* ir = new_ir0(IR_LABEL, EM_pointersize);
+	struct ir* ir = new_ir0(IR_LABEL, EM_pointersize, IRT_PTR);
 	ir->u.lvalue = label;
 	return ir;
 }
 
-struct ir* new_constir(int size, arith value)
+struct ir* new_constir(arith value, int size, enum ir_type type)
 {
-	struct ir* ir = new_ir0(IR_CONST, size);
+	struct ir* ir = new_ir0(IR_CONST, size, type);
 	ir->u.ivalue = value;
 	return ir;
 }
 
 struct ir* new_wordir(arith value)
 {
-    return new_constir(EM_wordsize, value);
+    return new_constir(EM_wordsize, value, IRT_INT);
 }
 
 struct ir* new_bbir(struct basicblock* bb)
 {
-	struct ir* ir = new_ir0(IR_BLOCK, EM_pointersize);
+	struct ir* ir = new_ir0(IR_BLOCK, EM_pointersize, IRT_PTR);
 	ir->u.bvalue = bb;
 	return ir;
 }
 
 struct ir* new_anyir(int size)
 {
-	return new_ir0(IR_ANY, size);
+	return new_ir0(IR_ANY, size, IRT_UNSET);
 }
 
 struct ir* new_localir(int offset)
 {
-    struct ir* ir = new_ir0(IR_LOCAL, EM_pointersize);
+    struct ir* ir = new_ir0(IR_LOCAL, EM_pointersize, IRT_PTR);
     ir->u.ivalue = offset;
     return ir;
 }
@@ -105,11 +106,12 @@ static void print_expr(char k, const struct ir* ir)
 {
     tracef(k, "%s", ir_data[ir->opcode].name);
     if (ir->size)
-        tracef(k, "%d", ir->size);
+        tracef(k, "_%d", ir->size);
     if (ir->type)
-        tracef(k, ".%s",
+        tracef(k, "%s",
             ((ir->type == IRT_INT) ? "I" :
-             (ir->type == IRT_FLOAT) ? "F" :
+             (ir->type == IRT_FLT) ? "F" :
+             (ir->type == IRT_PTR) ? "P" :
              (ir->type == IRT_ANY) ? "*" :
              "?"));
     tracef(k, "(");

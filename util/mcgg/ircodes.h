@@ -9,9 +9,10 @@ enum
 enum ir_type
 {
 	IRT_UNSET = 0,
+	IRT_ANY,
 	IRT_INT,
-	IRT_FLOAT,
-	IRT_ANY
+	IRT_FLT,
+    IRT_PTR,
 };
 
 struct ir_data

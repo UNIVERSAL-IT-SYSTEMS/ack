@@ -29,18 +29,18 @@ PATTERNS
 
 	reg;
 
-	reg = REG4;
+	reg = REG_4I;
 
-	PAIR(BLOCK4, BLOCK4);
+	PAIR(BLOCK_4P, BLOCK_4P);
 
 
 /* Miscellaneous special things */
 
-	PUSH4(in:reg)
+	PUSH_4I(in:reg)
 		emit "push %in"
 		cost 4;
 
-	reg = POP4
+	reg = POP_4I
 		emit "pop %reg"
 		cost 4;
 
@@ -48,47 +48,47 @@ PATTERNS
 		emit "ret"
 		cost 4;
 
-	SETRET4(in:reg)
+	SETRET_4I(in:reg)
 		emit "mov r0, %in"
 		cost 4;
 
 
 /* Memory operations */
 
-	STORE4(addr:address, value:reg)
+	STORE_4I(addr:address, value:reg)
 		emit "str %value, %addr"
 		cost 4;
 
-	reg = LOAD4(addr:address)
+	reg = LOAD_4I(addr:address)
 		emit "ldr %reg, %addr"
 		cost 4;
 
-	reg = LOAD1(addr:address)
+	reg = LOAD_1I(addr:address)
 		emit "ldrb %reg, %addr"
 		cost 4;
 
-	reg = CIU14(LOAD1(addr:address))
+	reg = CIU1_4I(LOAD_1I(addr:address))
 		emit "ldrb %reg, %addr"
 		cost 4;
 	
-	reg = CII14(CIU41(CIU14(LOAD1(addr:address))))
+	reg = CII1_4I(CIU4_1I(CIU1_4I(LOAD_1I(addr:address))))
 		emit "ldrsb %reg, %addr"
 		cost 4;
 
 
 /* Locals */
 
-	reg = in:LOCAL4
+	reg = in:LOCAL_4I
 		emit "add %reg, fp, #$in"
 		cost 4;
 
-	address = in:LOCAL4
+	address = in:LOCAL_4I
 		emit "[fp, #$in]";
 
 
 /* Memory addressing modes */
 
-	address = ADD4(addr:reg, offset:CONST4)
+	address = ADD_4I(addr:reg, offset:CONST_4I)
 		emit "[%addr, #$offset]";
 
 	address = addr:reg
@@ -97,16 +97,16 @@ PATTERNS
 
 /* Branches */
 
-	JUMP(addr:BLOCK4)
+	JUMP(addr:BLOCK_4I)
 		emit "b $addr"
 		cost 4;
 
-	CJUMPEQ(value:tristate, PAIR(true:BLOCK4, false:BLOCK4))
+	CJUMPEQ(value:tristate, PAIR(true:BLOCK_4I, false:BLOCK_4I))
 		emit "beq $true"
 		emit "b $false"
 		cost 8;
 
-	CJUMPEQ(value:bistate, PAIR(true:BLOCK4, false:BLOCK4))
+	CJUMPEQ(value:bistate, PAIR(true:BLOCK_4I, false:BLOCK_4I))
 		emit "beq $true"
 		emit "b $false"
 		cost 8;
@@ -114,11 +114,11 @@ PATTERNS
 
 /* Comparisons */
 
-	tristate = COMPARES4(left:reg, right:aluparam)
+	tristate = COMPARES_4I(left:reg, right:aluparam)
 		emit "cmp %left, %right"
 		cost 4;
 
-	bistate = COMPARES4(COMPARES4(left:reg, right:aluparam), CONST4)
+	bistate = COMPARES_4I(COMPARES_4I(left:reg, right:aluparam), CONST_4I)
 		emit "cmp %left, %right"
 		cost 4;
 
@@ -136,26 +136,26 @@ PATTERNS
 
 /* Conversions */
 
-	reg = CII14(CIU41(value:reg))
+	reg = CII1_4I(CIU4_1I(value:reg))
 		emit "sxtb %reg, %value"
 		cost 4;
 
-	reg = CIU41(in:reg)
+	reg = CIU4_1I(in:reg)
 		emit "and %reg, %in, #0xff"
 		cost 4;
 
 
 /* ALU operations */
 
-	reg = ADD4(left:reg, right:aluparam)
+	reg = ADD_4I(left:reg, right:aluparam)
 		emit "add %reg, %left, %right"
 		cost 4;
 
-	reg = ADD4(left:aluparam, right:reg)
+	reg = ADD_4I(left:aluparam, right:reg)
 		emit "add %reg, %right, %left"
 		cost 4;
 
-	aluparam = value:CONST4
+	aluparam = value:CONST_4I
 		emit "#$value";
 
 	aluparam = reg;
@@ -164,14 +164,18 @@ PATTERNS
 		emit "mov %reg, %value"
 		cost 4;
 
-	reg = value:LABEL4
+	reg = value:LABEL_4I
 		emit "adr %reg, $value"
 		cost 4;
 
-	reg = value:BLOCK4
+	reg = value:BLOCK_4I
 		emit "adr %reg, $value"
 		cost 4;
 
-	reg = value:CONST4
-		emit "ldr %reg, #$value"
-		cost 4;
+	reg = value:CONST_4I
+		emit "ldr %reg, label-for-$value"
+		cost 8;
+
+	reg = value:CONST_4F
+		emit "ldr %reg, label-for-$value"
+		cost 8;

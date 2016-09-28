@@ -39,7 +39,7 @@ static struct ir* pop(int size)
         return
             appendir(
                 new_ir0(
-                    IR_POP, size
+                    IR_POP, size, IRT_UNSET
                 )
             );
     }
@@ -92,7 +92,7 @@ static void materialise_stack(void)
         struct ir* ir = stack[i];
         appendir(
             new_ir1(
-                IR_PUSH, ir->size,
+                IR_PUSH, ir->size, IRT_UNSET,
                 ir
             )
         );
@@ -119,7 +119,7 @@ static struct ir* address_of_external(const char* label, arith offset)
     if (offset != 0)
         return
             new_ir2(
-                IR_ADD, EM_pointersize,
+                IR_ADD, EM_pointersize, IRT_PTR,
                 new_labelir(label),
                 new_wordir(offset)
             );
@@ -142,7 +142,7 @@ static struct ir* convert(struct ir* src, int destsize, int opcode)
 
     return
         new_ir1(
-            opcode, destsize,
+            opcode, destsize, IRT_INT,
             src
         );
 }
@@ -154,7 +154,7 @@ static struct ir* tristate_compare(int size, int opcode)
 
     return
         new_ir2(
-            opcode, EM_wordsize,
+            opcode, EM_wordsize, IRT_UNSET,
             left, right
         );
 }
@@ -185,7 +185,7 @@ static void insn_simple(int opcode)
             materialise_stack();
             appendir(
                 new_ir1(
-                    IR_JUMP, 0,
+                    IR_JUMP, 0, 0,
                     dest
                 )
             );
@@ -208,7 +208,7 @@ static void insn_simple(int opcode)
             materialise_stack();
             appendir(
                 new_ir1(
-                    IR_CALL, 0,
+                    IR_CALL, 0, 0,
                     dest
                 )
             );
@@ -231,13 +231,13 @@ static void simple_branch2(int opcode, int size,
     materialise_stack();
     appendir(
         new_ir2(
-            irop, 0,
+            irop, 0, IRT_INT,
             new_ir2(
-                IR_COMPARES,  size,
+                IR_COMPARES, size, IRT_INT,
                 left, right
             ),
             new_ir2(
-                IR_PAIR, 0,
+                IR_PAIR, 0, IRT_UNSET,
                 new_bbir(truebb),
                 new_bbir(falsebb)
             )
@@ -274,7 +274,7 @@ static void insn_bvalue(int opcode, struct basicblock* leftbb, struct basicblock
 
             appendir(
                 new_ir1(
-                    IR_JUMP, 0,
+                    IR_JUMP, 0, 0,
                     new_bbir(leftbb)
                 )
             );
@@ -293,26 +293,26 @@ static void insn_bvalue(int opcode, struct basicblock* leftbb, struct basicblock
     }
 }
 
-static void simple_alu1(int opcode, int size, int irop)
+static void simple_op1(int opcode, int size, int irop, int type)
 {
     struct ir* val = pop(size);
 
     push(
         new_ir1(
-            irop, size,
+            irop, size, type,
             val
         )
     );
 }
 
-static void simple_alu2(int opcode, int size, int irop)
+static void simple_op2(int opcode, int size, int irop, int type)
 {
     struct ir* right = pop(size);
     struct ir* left = pop(size);
 
     push(
         new_ir2(
-            irop, size,
+            irop, size, type,
             left, right
         )
     );
@@ -330,7 +330,7 @@ static struct ir* extract_block_refs(struct basicblock* bb)
         assert(em->paramtype == PARAM_BVALUE);
 
         outir = new_ir2(
-            IR_PAIR, 0,
+            IR_PAIR, 0, 0,
             new_bbir(em->u.bvalue.left),
             outir
         );
@@ -343,28 +343,28 @@ static void insn_ivalue(int opcode, arith value)
 {
     switch (opcode)
     {
-        case op_adi: simple_alu2(opcode, value, IR_ADD); break;
-        case op_sbi: simple_alu2(opcode, value, IR_SUB); break;
-        case op_mli: simple_alu2(opcode, value, IR_MUL); break;
-        case op_dvi: simple_alu2(opcode, value, IR_DIV); break;
-        case op_rmi: simple_alu2(opcode, value, IR_MOD); break;
-        case op_ngi: simple_alu1(opcode, value, IR_NEG); break;
+        case op_adi: simple_op2(opcode, value, IR_ADD, IRT_INT); break;
+        case op_sbi: simple_op2(opcode, value, IR_SUB, IRT_INT); break;
+        case op_mli: simple_op2(opcode, value, IR_MUL, IRT_INT); break;
+        case op_dvi: simple_op2(opcode, value, IR_DIV, IRT_INT); break;
+        case op_rmi: simple_op2(opcode, value, IR_MOD, IRT_INT); break;
+        case op_ngi: simple_op1(opcode, value, IR_NEG, IRT_INT); break;
 
-        case op_and: simple_alu2(opcode, value, IR_AND); break;
-        case op_ior: simple_alu2(opcode, value, IR_OR); break;
-        case op_xor: simple_alu2(opcode, value, IR_EOR); break;
-        case op_com: simple_alu1(opcode, value, IR_NOT); break;
+        case op_and: simple_op2(opcode, value, IR_AND, IRT_INT); break;
+        case op_ior: simple_op2(opcode, value, IR_OR, IRT_INT); break;
+        case op_xor: simple_op2(opcode, value, IR_EOR, IRT_INT); break;
+        case op_com: simple_op1(opcode, value, IR_NOT, IRT_INT); break;
 
-        case op_adf: simple_alu2(opcode, value, IR_ADDF); break;
-        case op_sbf: simple_alu2(opcode, value, IR_SUBF); break;
-        case op_mlf: simple_alu2(opcode, value, IR_MULF); break;
-        case op_dvf: simple_alu2(opcode, value, IR_DIVF); break;
-        case op_ngf: simple_alu1(opcode, value, IR_NEGF); break;
+        case op_adf: simple_op2(opcode, value, IR_ADD, IRT_FLT); break;
+        case op_sbf: simple_op2(opcode, value, IR_SUB, IRT_FLT); break;
+        case op_mlf: simple_op2(opcode, value, IR_MUL, IRT_FLT); break;
+        case op_dvf: simple_op2(opcode, value, IR_DIV, IRT_FLT); break;
+        case op_ngf: simple_op1(opcode, value, IR_NEG, IRT_FLT); break;
 
         case op_lol:
             push(
                 new_ir1(
-                    IR_LOAD, EM_wordsize,
+                    IR_LOAD, EM_wordsize, IRT_UNSET,
                     new_localir(value)
                 )
             );
@@ -373,7 +373,7 @@ static void insn_ivalue(int opcode, arith value)
         case op_stl:
             appendir(
                 new_ir2(
-                    IR_STORE, EM_wordsize,
+                    IR_STORE, EM_wordsize, IRT_UNSET,
                     new_localir(value),
                     pop(EM_wordsize)
                 )
@@ -388,14 +388,14 @@ static void insn_ivalue(int opcode, arith value)
 
         case op_loc:
             push(
-                new_wordir(value)
+                new_constir(value, EM_wordsize, IRT_UNSET)
             );
             break;
 
         case op_loi:
             push(
                 new_ir1(
-                    IR_LOAD, value,
+                    IR_LOAD, value, IRT_UNSET,
                     pop(EM_pointersize)
                 )
             );
@@ -408,7 +408,7 @@ static void insn_ivalue(int opcode, arith value)
 
             appendir(
                 new_ir2(
-                    IR_STORE, value,
+                    IR_STORE, value, IRT_UNSET,
                     ptr, val
                 )
             );
@@ -437,7 +437,7 @@ static void insn_ivalue(int opcode, arith value)
 
             push(
                 new_ir2(
-                    IR_ADD, EM_pointersize,
+                    IR_ADD, EM_pointersize, IRT_PTR,
                     ptr, off
                 )
             );
@@ -450,7 +450,7 @@ static void insn_ivalue(int opcode, arith value)
 
             push(
                 new_ir2(
-                    IR_ADD, EM_pointersize,
+                    IR_ADD, EM_pointersize, IRT_PTR,
                     ptr,
                     new_wordir(value)
                 )
@@ -465,7 +465,7 @@ static void insn_ivalue(int opcode, arith value)
 
             struct ir* delta = 
                 new_ir2(
-                    IR_SUB, EM_pointersize,
+                    IR_SUB, EM_pointersize, IRT_PTR,
                     left, right
                 );
 
@@ -511,7 +511,7 @@ static void insn_ivalue(int opcode, arith value)
                     {
                         appendir(
                             new_ir1(
-                                IR_STACKADJUST, EM_pointersize,
+                                IR_STACKADJUST, EM_pointersize, 0,
                                 new_wordir(value)
                             )
                         );
@@ -529,7 +529,7 @@ static void insn_ivalue(int opcode, arith value)
                 materialise_stack();
                 appendir(
                     new_ir1(
-                        IR_SETRET, value,
+                        IR_SETRET, value, IRT_UNSET,
                         retval
                     )
                 );
@@ -537,7 +537,7 @@ static void insn_ivalue(int opcode, arith value)
 
             appendir(
                 new_ir0(
-                    IR_RET, 0
+                    IR_RET, 0, 0
                 )
             );
             break;
@@ -548,7 +548,7 @@ static void insn_ivalue(int opcode, arith value)
             push(
                 appendir(
                     new_ir0(
-                        IR_GETRET, value
+                        IR_GETRET, value, IRT_UNSET
                     )
                 )
             );
@@ -571,7 +571,7 @@ static void insn_ivalue(int opcode, arith value)
             materialise_stack();
             appendir(
                 new_ir2(
-                    IR_JUMP, 0,
+                    IR_JUMP, 0, 0,
                     new_labelir(helper),
                     extract_block_refs(bb_get(descriptor->u.lvalue))
                 )
@@ -598,7 +598,7 @@ static void insn_lvalue(int opcode, const char* label, arith offset)
         case op_loe:
             push(
                 new_ir1(
-                    IR_LOAD, EM_wordsize,
+                    IR_LOAD, EM_wordsize, IRT_UNSET,
                     address_of_external(label, offset)
                 )
             );
@@ -607,7 +607,7 @@ static void insn_lvalue(int opcode, const char* label, arith offset)
         case op_ste:
             appendir(
                 new_ir2(
-                    IR_STORE, EM_wordsize,
+                    IR_STORE, EM_wordsize, IRT_UNSET,
                     address_of_external(label, offset),
                     pop(EM_wordsize)
                 )
@@ -619,7 +619,7 @@ static void insn_lvalue(int opcode, const char* label, arith offset)
             materialise_stack();
             appendir(
                 new_ir1(
-                    IR_CALL, 0,
+                    IR_CALL, 0, 0,
                     new_labelir(label)
                 )
             );
@@ -630,7 +630,7 @@ static void insn_lvalue(int opcode, const char* label, arith offset)
             materialise_stack();
             appendir(
                 new_ir1(
-                    IR_JUMP, 0,
+                    IR_JUMP, 0, 0,
                     new_labelir(label)
                 )
             );

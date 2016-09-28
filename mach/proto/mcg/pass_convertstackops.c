@@ -121,10 +121,10 @@ static void convert_block(struct procedure* proc, struct basicblock* bb)
         {
             struct ir* ir = pops.item[i];
             struct ir* pushir = pushes.item[0];
-            struct ir* phi = new_ir1(IR_PHI, ir->size, pushir);
+            struct ir* phi = new_ir1(IR_PHI, ir->size, IRT_UNSET, pushir);
 
             for (j=1; j<pushes.count; j++)
-                phi = new_ir2(IR_PHI, ir->size, phi, pushes.item[j]);
+                phi = new_ir2(IR_PHI, ir->size, IRT_UNSET, phi, pushes.item[j]);
 
             phi->is_sequence = ir->is_sequence;
             *ir = *phi;

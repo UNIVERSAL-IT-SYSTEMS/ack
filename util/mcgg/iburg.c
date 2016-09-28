@@ -176,10 +176,23 @@ char* stringf(char* fmt, ...)
     return p;
 }
 
-static void registerterminal(const struct ir_data* data, int iropcode, int size)
+static char type_to_char(enum ir_type type)
 {
-	const char* s = (size == 0) ? data->name : stringf("%s%d", data->name, size);
-	int esn = ir_to_esn(iropcode, size);
+	switch (type)
+	{
+		case IRT_INT: return 'I';
+		case IRT_FLT: return 'F';
+		case IRT_PTR: return 'P';
+		default:      return '?';
+	}
+}
+
+static void registerterminal(const struct ir_data* data,
+		int iropcode, int size, enum ir_type type)
+{
+	const char* s = (size == 0) ? data->name :
+		stringf("%s_%d%c", data->name, size, type_to_char(type));
+	int esn = ir_to_esn(iropcode, size, type);
 
 	term(s, esn);
 }
@@ -192,13 +205,21 @@ static void registerterminals(void)
 	{
 		if (ir_data[i].flags & IRF_SIZED)
 		{
-			registerterminal(&ir_data[i], i, 1);
-			registerterminal(&ir_data[i], i, 2);
-			registerterminal(&ir_data[i], i, 4);
-			registerterminal(&ir_data[i], i, 8);
+			registerterminal(&ir_data[i], i, 1, IRT_INT);
+			registerterminal(&ir_data[i], i, 2, IRT_INT);
+			registerterminal(&ir_data[i], i, 4, IRT_INT);
+			registerterminal(&ir_data[i], i, 8, IRT_INT);
+			registerterminal(&ir_data[i], i, 1, IRT_FLT);
+			registerterminal(&ir_data[i], i, 2, IRT_FLT);
+			registerterminal(&ir_data[i], i, 4, IRT_FLT);
+			registerterminal(&ir_data[i], i, 8, IRT_FLT);
+			registerterminal(&ir_data[i], i, 1, IRT_PTR);
+			registerterminal(&ir_data[i], i, 2, IRT_PTR);
+			registerterminal(&ir_data[i], i, 4, IRT_PTR);
+			registerterminal(&ir_data[i], i, 8, IRT_PTR);
 		}
 		else
-			registerterminal(&ir_data[i], i, 0);
+			registerterminal(&ir_data[i], i, 0, 0);
 	}
 }
 
@@ -1123,6 +1144,7 @@ static void emitterms(Term terms)
 	}
 	print("};\n\n");
 
+	#if 0 /* dg --- unused */
 	print("static const char *%Popname[] = {\n");
 	for (k = 0, p = terms; p; p = p->link)
 	{
@@ -1131,6 +1153,7 @@ static void emitterms(Term terms)
 		print("%1/* %d */%1\"%S\",\n", k++, p);
 	}
 	print("};\n\n");
+	#endif
 }
 
 /* emittest - emit clause for testing a match */

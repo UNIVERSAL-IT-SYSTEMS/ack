@@ -10,7 +10,7 @@ awk -f - $in >$header << "EOF"
 	}
 
 	/^ *[^# ]+/ {
-		print "\tIR_" $2 ","
+		print "\tIR_" $3 ","
 	}
 
 	END {
@@ -27,7 +27,8 @@ awk -f - $in >$source << "EOF"
 
 	function char_to_type(c) {
 		if (c == "I") return "IRT_INT"
-		if (c == "F") return "IRT_FLOAT"
+		if (c == "F") return "IRT_FLT"
+		if (c == "P") return "IRT_PTR"
 		if (c == "A") return "IRT_ANY"
 		return "IRT_UNSET"
 	}
@@ -38,11 +39,11 @@ awk -f - $in >$source << "EOF"
 	}
 
 	/^ *[^# ]+/ {
-		printf("\t{ \"%s\", ", $2)
+		printf("\t{ \"%s\", ", $3)
 		printf("%s, ", char_to_flags(substr($1, 1, 1)))
-		printf("%s, ", char_to_type(substr($1, 2, 1)))
-		printf("%s, ", char_to_type(substr($1, 3, 1)))
-		printf("%s", char_to_type(substr($1, 4, 1)))
+		printf("%s, ", char_to_type(substr($2, 1, 1)))
+		printf("%s, ", char_to_type(substr($2, 2, 1)))
+		printf("%s", char_to_type(substr($2, 3, 1)))
 		printf(" },\n")
 	}
 
